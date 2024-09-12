@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	eip "github.com/EfficientIP-Labs/solidserver-go-client/sdsclient"
+	eip "github.com/efficientip-labs/solidserver-go-client/sdsclient"
 	log "github.com/sirupsen/logrus"
 
 	"sigs.k8s.io/external-dns/endpoint"

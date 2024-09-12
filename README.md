@@ -19,8 +19,8 @@ To run the provider, you must provide the following Environment Variables:
 |------------------------|---------------|----------|
 | EIP_HOST               | localhost     | true     |
 | EIP_PORT               | 443           | true     |   
-| EIP_WAPI_USER          |               | true     |
-| EIP_WAPI_PASSWORD      |               | true     |
+| EIP_USER               |               | true     |
+| EIP_PASSWORD           |               | true     |
 | EIP_SMART              |               | true     |
 | EIP_VIEW               |               | false    |
 | EIP_SSL_VERIFY         | true          | false    |

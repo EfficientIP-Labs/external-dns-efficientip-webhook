@@ -23,8 +23,8 @@ const (
 type EfficientIPConfig struct {
 	Host       string `env:"EIP_HOST,required" envDefault:"localhost"`
 	Port       int    `env:"EIP_PORT,required" envDefault:"443"`
-	Username   string `env:"EIP_WAPI_USER,required"`
-	Password   string `env:"EIP_WAPI_PASSWORD,required"`
+	Username   string `env:"EIP_USER,required"`
+	Password   string `env:"EIP_PASSWORD,required"`
 	DnsSmart   string `env:"EIP_SMART,required"`
 	DnsView    string `env:"EIP_VIEW" envDefault:""`
 	SSLVerify  bool   `env:"EIP_SSL_VERIFY" envDefault:"true"`

@@ -24,6 +24,7 @@
 !README.md
 !LICENSE
 !renovate.json
+!*.example
 
 # ...even if they are in subdirectories
 !*/

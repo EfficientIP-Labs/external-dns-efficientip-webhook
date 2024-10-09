@@ -23,8 +23,10 @@ const (
 type EfficientIPConfig struct {
 	Host       string `env:"EIP_HOST,required" envDefault:"localhost"`
 	Port       int    `env:"EIP_PORT,required" envDefault:"443"`
-	Username   string `env:"EIP_USER,required"`
-	Password   string `env:"EIP_PASSWORD,required"`
+	Username   string `env:"EIP_USER" envDefault:"ipmadmin"`
+	Password   string `env:"EIP_PASSWORD" envDefault:""`
+	Token      string `env:"EIP_TOKEN" envDefault:""`
+	Secret     string `env:"EIP_SECRET" envDefault:""`
 	DnsSmart   string `env:"EIP_SMART,required"`
 	DnsView    string `env:"EIP_VIEW" envDefault:""`
 	SSLVerify  bool   `env:"EIP_SSL_VERIFY" envDefault:"true"`
@@ -43,16 +45,20 @@ type EfficientipClient interface {
 	RecordList(Zone ZoneAuth) (endpoints []*endpoint.Endpoint, _ error)
 }
 
-func NewEfficientipAPI(ctx context.Context, config *eip.Configuration) EfficientIPAPI {
-	return EfficientIPAPI{
-		client:  eip.NewAPIClient(config),
-		context: ctx,
-	}
+func NewEfficientipAPI(ctx context.Context, config *eip.Configuration, eipConfig *EfficientIPConfig) EfficientIPAPI {
+    return EfficientIPAPI{
+        client:  eip.NewAPIClient(config),
+        context: ctx,
+        dnsName: eipConfig.DnsSmart,
+        dnsView: eipConfig.DnsView,
+    }
 }
 
 type EfficientIPAPI struct {
-	client  *eip.APIClient
-	context context.Context
+    client  *eip.APIClient
+    context context.Context
+    dnsName string
+    dnsView string
 }
 
 type Provider struct {
@@ -69,7 +75,7 @@ type ZoneAuth struct {
 	ID   string
 }
 
-func NewZoneAuth(zone eip.DnsZoneDataData) *ZoneAuth {
+func NewZoneAuth(zone eip.DataInnerDnsZoneData) *ZoneAuth {
 	return &ZoneAuth{
 		Name: zone.GetZoneName(),
 		Type: zone.GetZoneType(),
@@ -79,31 +85,40 @@ func NewZoneAuth(zone eip.DnsZoneDataData) *ZoneAuth {
 
 // Creates a new EfficientIP provider.
 func NewEfficientIPProvider(config *EfficientIPConfig, domainFilter endpoint.DomainFilter) (*Provider, error) {
-	clientConfig := eip.NewConfiguration()
-	if !config.SSLVerify {
-		customTransport := http.DefaultTransport.(*http.Transport).Clone()
-		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-		clientConfig.HTTPClient = &http.Client{Transport: customTransport}
-	}
+    clientConfig := eip.NewConfiguration()
+    if !config.SSLVerify {
+        customTransport := http.DefaultTransport.(*http.Transport).Clone()
+        customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+        clientConfig.HTTPClient = &http.Client{Transport: customTransport}
+    }
 
-	ctx := context.WithValue(context.Background(), eip.ContextBasicAuth, eip.BasicAuth{
-		UserName: config.Username,
-		Password: config.Password,
-	})
-	ctx = context.WithValue(ctx, eip.ContextServerVariables, map[string]string{
-		"host": config.Host,
-		"port": strconv.Itoa(config.Port),
-	})
-	client := NewEfficientipAPI(ctx, clientConfig)
+    var ctx context.Context
+    if config.Token != "" && config.Secret != "" {
+        ctx = context.WithValue(context.Background(), eip.ContextEipApiTokenAuth, eip.EipApiTokenAuth{
+            Token:  config.Token,
+            Secret: config.Secret,
+        })
+    } else {
+        ctx = context.WithValue(context.Background(), eip.ContextBasicAuth, eip.BasicAuth{
+            UserName: config.Username,
+            Password: config.Password,
+        })
+    }
 
-	provider := &Provider{
-		client:       &client,
-		domainFilter: domainFilter,
-		context:      ctx,
-		config:		  config,
-	}
+    ctx = context.WithValue(ctx, eip.ContextServerVariables, map[string]string{
+        "host": config.Host,
+        "port": strconv.Itoa(config.Port),
+    })
+    client := NewEfficientipAPI(ctx, clientConfig, config)
 
-	return provider, nil
+    provider := &Provider{
+        client:       &client,
+        domainFilter: domainFilter,
+        context:      ctx,
+        config:		  config,
+    }
+
+    return provider, nil
 }
 
 func (p *Provider) Zones() ([]*ZoneAuth, error) {
@@ -244,9 +259,10 @@ func (e *EfficientIPAPI) ZonesList(config *EfficientIPConfig) ([]*ZoneAuth, erro
 	if config.DnsView != "" {
 		where += fmt.Sprintf("+AND+view_name%%3D%%27%s5%27", config.DnsView)
 	}
-	zones, _, err := e.client.DnsApi.DnsZoneList(e.context).Where(where).Execute()
+	zones, _, err := e.client.DnsAPI.DnsZoneList(e.context).Where(where).Execute()
 
-	if err.Error() != "" && (!zones.HasSuccess() || !zones.GetSuccess()) {
+	if err != nil && (!zones.HasSuccess() || !zones.GetSuccess()) {
+        log.Errorf("Error when calling DnsAPI.DnsZoneList: %v\n", err)
 		return nil, err
 	}
 
@@ -259,9 +275,9 @@ func (e *EfficientIPAPI) ZonesList(config *EfficientIPConfig) ([]*ZoneAuth, erro
 }
 
 func (e *EfficientIPAPI) RecordList(zone ZoneAuth) (endpoints []*endpoint.Endpoint, _ error) {
-	records, _, err := e.client.DnsApi.DnsRrList(e.context).Where("zone_id=" + zone.ID).Orderby("rr_full_name").Execute()
-	if err.Error() != "" && (!records.HasSuccess() || !records.GetSuccess()) {
-		log.Errorf("Failed to get RRs from zone [%s]", zone.Name)
+	records, _, err := e.client.DnsAPI.DnsRrList(e.context).Where("zone_id=" + zone.ID).Orderby("rr_full_name").Execute()
+	if err != nil && (!records.HasSuccess() || !records.GetSuccess()) {
+		log.Errorf("Failed to get RRs from zone [%s]: %v", zone.Name, err)
 		return nil, err
 	}
 
@@ -300,33 +316,35 @@ func (e *EfficientIPAPI) RecordDelete(rr *endpoint.Endpoint) error {
 			value,
 		)
 
-		_, _, err := e.client.DnsApi.DnsRrDelete(e.context).RrName(rr.DNSName).RrType(rr.RecordType).RrValue1(value).Execute()
-		if err.Error() != "" {
-			log.Errorf("Deletion of the RR %v %v -> %v : failed!", rr.RecordType, rr.DNSName, value)
+		_, _, err := e.client.DnsAPI.DnsRrDelete(e.context).RrName(rr.DNSName).RrType(rr.RecordType).RrValue1(value).Execute()
+		if err != nil {
+			log.Errorf("Deletion of the RR %v %v -> %v : failed! %v", rr.RecordType, rr.DNSName, value, err)
 		}
 	}
 	return nil
 }
 
 func (e *EfficientIPAPI) RecordAdd(rr *endpoint.Endpoint) error {
-	for _, value := range rr.Targets {
-		log.Infof("Creating %s record named '%s' to '%s' for Efficientip",
-			rr.RecordType,
-			rr.DNSName,
-			value,
-		)
+    for _, value := range rr.Targets {
+        log.Infof("Creating %s record named '%s' to '%s' for Efficientip",
+            rr.RecordType,
+            rr.DNSName,
+            value,
+        )
 
-		ttl := int32(rr.RecordTTL)
-		_, _, err := e.client.DnsApi.DnsRrAdd(e.context).DnsRrAddInput(eip.DnsRrAddInput{
-			RrName:   &rr.DNSName,
-			RrType:   &rr.RecordType,
-			RrTtl:    &ttl,
-			RrValue1: &value,
-		}).Execute()
+        ttl := int32(rr.RecordTTL)
+        _, _, err := e.client.DnsAPI.DnsRrAdd(e.context).DnsRrAddInput(eip.DnsRrAddInput{
+            ServerName: &e.dnsName,
+            ViewName: &e.dnsView,
+            RrName:   &rr.DNSName,
+            RrType:   &rr.RecordType,
+            RrTtl:    &ttl,
+            RrValue1: &value,
+        }).Execute()
 
-		if err.Error() != "" {
-			log.Errorf("Creation of the RR %v %v  [%v]-> %v : failed!", rr.RecordType, rr.DNSName, ttl, value)
-		}
-	}
-	return nil
+        if err != nil {
+            log.Errorf("Creation of the RR %v %v  [%v]-> %v : failed! %v", rr.RecordType, rr.DNSName, ttl, value, err)
+        }
+    }
+    return nil
 }

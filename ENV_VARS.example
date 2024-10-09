@@ -1,0 +1,18 @@
+export EIP_HOST=1.2.3.4
+export EIP_PORT=443
+export EIP_USER=xxx
+export EIP_PASSWORD=xxx
+export EIP_TOKEN=xxx
+export EIP_SECRET=xxx
+export EIP_SSL_VERIFY=false
+export EIP_DRY_RUN=false
+export EIP_MAX_RESULTS=1500
+export EIP_DEFAULT_TTL=300
+export EIP_DRY_RUN=false
+export EIP_SMART=test.smart
+export EIP_VIEW=
+
+export SERVER_HOST=0.0.0.0  
+export SERVER_PORT=8888 
+export DOMAIN_FILTER=test.com
+export LOG_LEVEL=debug

@@ -45,9 +45,15 @@ func Init(config configuration.Config) (provider.Provider, error) {
 	log.Info(createMsg)
 
 	eipConfig := efficientip.EfficientIPConfig{}
-	if err := env.Parse(&eipConfig); err != nil {
-		return nil, fmt.Errorf("reading configuration failed: %v", err)
-	}
+    if err := env.Parse(&eipConfig); err != nil {
+        return nil, fmt.Errorf("reading configuration failed: %v", err)
+    } else {
+        if eipConfig.Token == "" || eipConfig.Secret == "" {
+            if eipConfig.Username == "" || eipConfig.Password == "" {
+                return nil, fmt.Errorf("missing authentication credentials. Login/password or access token/secret are required")
+            }
+        }
+    }
 	eipConfig.FQDNRegEx = config.RegexDomainFilter
 	eipConfig.NameRegEx = config.RegexNameFilter
 

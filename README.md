@@ -19,14 +19,17 @@ To run the provider, you must provide the following Environment Variables:
 |------------------------|---------------|----------|
 | EIP_HOST               | localhost     | true     |
 | EIP_PORT               | 443           | true     |   
-| EIP_USER               |               | true     |
-| EIP_PASSWORD           |               | true     |
+| EIP_USER               |               | false    |
+| EIP_PASSWORD           |               | false    |
+| EIP_TOKEN              |               | false    |
+| EIP_SECRET             |               | false    |
 | EIP_SMART              |               | true     |
 | EIP_VIEW               |               | false    |
 | EIP_SSL_VERIFY         | true          | false    |
 | EIP_DRY_RUN            | false         | false    |
 | EIP_DEFAULT_TTL        | 300           | false    |
 
+Note: The APi authentication requires either EIP_USER/EIP_PASSWORD or EIP_TOKEN/EIP_SECRET.
 
 **external-dns-efficientip-webhook Environment Variables**:
 

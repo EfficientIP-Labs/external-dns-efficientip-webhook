@@ -255,9 +255,9 @@ func (p *Provider) CreateChanges(_ context.Context, changes *endpoint.Endpoint) 
 }
 
 func (e *EfficientIPAPI) ZonesList(config *EfficientIPConfig) ([]*ZoneAuth, error) {
-	where := fmt.Sprintf("server_name%%3D%%27%s%%27", config.DnsSmart)
+	where := fmt.Sprintf("server_name='%s'", config.DnsSmart)
 	if config.DnsView != "" {
-		where += fmt.Sprintf("+AND+view_name%%3D%%27%s5%27", config.DnsView)
+		where += fmt.Sprintf(" AND view_name='%s'", config.DnsView)
 	}
 	zones, _, err := e.client.DnsAPI.DnsZoneList(e.context).Where(where).Execute()
 

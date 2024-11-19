@@ -1,7 +1,7 @@
 version: "3"
 services:
   external-dns-efficientip:
-    image: petervanek/external-dns-efficientip:latest
+    image: efficientip/external-dns-efficientip:latest
     ports:
       - "8888:8888/tcp" # Service port
     environment:

@@ -1,0 +1,23 @@
+version: "3"
+services:
+  external-dns-efficientip:
+    image: efficientip/external-dns-efficientip:latest
+    ports:
+      - "8888:8888/tcp" # Service port
+    environment:
+      - EIP_HOST
+      - EIP_PORT
+      - EIP_USER
+      - EIP_PASSWORD
+      - EIP_TOKEN
+      - EIP_SECRET
+      - EIP_SMART
+      - EIP_VIEW
+      - EIP_SSL_VERIFY
+      - EIP_DRY_RUN
+      - EIP_DEFAULT_TTL
+      - DOMAIN_FILTER
+      - EXCLUDE_DOMAIN_FILTER
+      - REGEX_DOMAIN_FILTER
+      - REGEXP_DOMAIN_FILTER_EXCLUSION
+      - REGEX_NAME_FILTER

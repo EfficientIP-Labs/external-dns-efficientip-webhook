@@ -1,5 +1,8 @@
 #Stage 1: Build stage
-FROM golang:1.23 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24 AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /app
 
@@ -11,7 +14,7 @@ RUN go mod download
 COPY . ./
 
 # Build the Go binary with static linking
-RUN CGO_ENABLED=0 go build -a -o /app/bin/external-dns-efficientip-webhook ./cmd/webhook/main.go
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH}  CGO_ENABLED=0 go build -a -o /app/bin/external-dns-efficientip-webhook ./cmd/webhook/main.go
 
 # Stage 2: Runtime stage
 FROM debian:bullseye-slim
